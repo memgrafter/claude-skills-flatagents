@@ -1,0 +1,12 @@
+.env
+uv.lock
+
+node_modules
+__pycache__
+*.egg-info
+dist
+
+local
+.claude
+
+.DS_Store
