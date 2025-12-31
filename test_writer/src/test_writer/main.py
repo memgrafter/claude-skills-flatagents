@@ -15,11 +15,112 @@ Exit codes:
 """
 
 import argparse
+import ast
 import asyncio
+import re
 import sys
 from pathlib import Path
 
 from flatagents import FlatAgent, AgentResponse
+
+
+# =============================================================================
+# Token Optimization Helpers
+# =============================================================================
+
+def truncate_error(output: str, max_lines: int = 50) -> str:
+    """Keep first 20 + last 30 lines, preserving key error info."""
+    lines = output.splitlines()
+    if len(lines) <= max_lines:
+        return output
+    return "\n".join(lines[:20] + ["... truncated ..."] + lines[-30:])
+
+
+def extract_functions(source: str, function_names: list[str]) -> str:
+    """Extract specific functions + imports from source code."""
+    try:
+        tree = ast.parse(source)
+    except SyntaxError:
+        return source  # Fall back to full source
+
+    lines = source.splitlines()
+    result_lines: set[int] = set()
+
+    # Always include imports (lines at module level before first def/class)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for ln in range(node.lineno - 1, getattr(node, 'end_lineno', node.lineno)):
+                result_lines.add(ln)
+
+    # Extract requested functions
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name in function_names:
+            # Include decorators
+            start = node.lineno - 1
+            if node.decorator_list:
+                start = node.decorator_list[0].lineno - 1
+            end = getattr(node, 'end_lineno', node.lineno)
+            for ln in range(start, end):
+                result_lines.add(ln)
+
+    if not result_lines:
+        return source  # Fall back if nothing matched
+
+    sorted_lines = sorted(result_lines)
+    return "\n".join(lines[ln] for ln in sorted_lines)
+
+
+def summarize_existing_tests(test_code: str) -> tuple[str, list[str]]:
+    """Extract first test as sample + list of test names."""
+    try:
+        tree = ast.parse(test_code)
+    except SyntaxError:
+        return test_code, []
+
+    lines = test_code.splitlines()
+    test_names: list[str] = []
+    first_test: str = ""
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef) and node.name.startswith("test_"):
+            test_names.append(node.name)
+
+            # Capture first test function
+            if not first_test:
+                start = node.lineno - 1
+                if node.decorator_list:
+                    start = node.decorator_list[0].lineno - 1
+                end = getattr(node, 'end_lineno', node.lineno)
+                first_test = "\n".join(lines[start:end])
+
+    # Include imports in sample
+    sample = ""
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            for ln in range(node.lineno - 1, getattr(node, 'end_lineno', node.lineno)):
+                sample += lines[ln] + "\n"
+
+    sample += "\n" + first_test if first_test else ""
+
+    return sample.strip(), test_names
+
+
+def parse_function_names_from_analysis(analysis: str) -> list[str]:
+    """Extract function names from analyzer output."""
+    # Look for function names in common patterns
+    names = set()
+
+    # Pattern: `function_name` or function_name()
+    for match in re.finditer(r'`(\w+)`|\b(\w+)\(\)', analysis):
+        name = match.group(1) or match.group(2)
+        if name and not name.startswith('test_'):
+            names.add(name)
+
+    # Pattern: "def function_name"
+    for match in re.finditer(r'\bdef\s+(\w+)', analysis):
+        names.add(match.group(1))
+
+    return list(names)
 
 from .coverage import (
     run_coverage,
@@ -58,7 +159,8 @@ async def write_tests(
     source_code: str,
     target_file: str,
     coverage_targets: str,
-    existing_tests: str | None = None,
+    existing_tests_sample: str | None = None,
+    existing_test_names: list[str] | None = None,
     checker_feedback: str | None = None
 ) -> str:
     """Run writer agent to generate tests."""
@@ -68,7 +170,8 @@ async def write_tests(
         target_file=target_file,
         source_code=source_code,
         coverage_targets=coverage_targets,
-        existing_tests=existing_tests or "",
+        existing_tests_sample=existing_tests_sample or "",
+        existing_test_names=", ".join(existing_test_names) if existing_test_names else "",
         checker_feedback=checker_feedback or ""
     )
 
@@ -152,11 +255,12 @@ async def run(
     # Find or generate test file path
     test_file = find_test_file(str(target_path))
     if test_file:
-        existing_tests = Path(test_file).read_text()
+        raw_tests = Path(test_file).read_text()
+        existing_tests_sample, existing_test_names = summarize_existing_tests(raw_tests)
         print(f"Found existing tests: {test_file}")
     else:
         test_file = generate_test_filename(str(target_path))
-        existing_tests = None
+        existing_tests_sample, existing_test_names = None, []
         print(f"Will create new test file: {test_file}")
 
     # Get baseline coverage
@@ -191,11 +295,16 @@ async def run(
 
         # Step 2: Write tests
         print("\n[3/5] Writing tests...")
+        # Fix 2: Extract only relevant functions for smaller context
+        target_funcs = parse_function_names_from_analysis(coverage_targets)
+        focused_source = extract_functions(source_code, target_funcs) if target_funcs else source_code
+
         test_code = await write_tests(
-            source_code=source_code,
+            source_code=focused_source,
             target_file=str(target_path),
             coverage_targets=coverage_targets,
-            existing_tests=existing_tests
+            existing_tests_sample=existing_tests_sample,
+            existing_test_names=existing_test_names
         )
 
         # Step 3: Check test quality (up to 2 attempts)
@@ -215,10 +324,11 @@ async def run(
             if check_attempt < 1:
                 print("  Rewriting tests with feedback...")
                 test_code = await write_tests(
-                    source_code=source_code,
+                    source_code=focused_source,
                     target_file=str(target_path),
                     coverage_targets=coverage_targets,
-                    existing_tests=existing_tests,
+                    existing_tests_sample=existing_tests_sample,
+                    existing_test_names=existing_test_names,
                     checker_feedback=check_result
                 )
 
@@ -246,10 +356,12 @@ async def run(
 
             # Try to fix
             print("  Attempting to fix...")
+            # Fix 1: Truncate error output to reduce tokens
+            raw_error = f"{test_result.output}\n{test_result.error}"
             fix_result = await fix_tests(
-                source_code=source_code,
+                source_code=focused_source,
                 test_code=test_code,
-                error_output=f"{test_result.output}\n{test_result.error}",
+                error_output=truncate_error(raw_error),
                 attempt=fix_attempt + 1,
                 max_attempts=max_fix_attempts
             )
@@ -278,7 +390,8 @@ async def run(
             return 0
 
         current_pct = new_pct
-        existing_tests = Path(test_file).read_text()
+        raw_tests = Path(test_file).read_text()
+        existing_tests_sample, existing_test_names = summarize_existing_tests(raw_tests)
 
     # Max rounds reached
     print(f"\n{'='*50}")

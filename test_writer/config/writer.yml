@@ -54,11 +54,13 @@ data:
     Coverage targets (from analyzer):
     {{ input.coverage_targets }}
 
-    {% if input.existing_tests %}
-    Existing tests (follow this style):
+    {% if input.existing_tests_sample %}
+    Example test (follow this style):
     ```python
-    {{ input.existing_tests }}
+    {{ input.existing_tests_sample }}
     ```
+
+    Existing test names (don't duplicate): {{ input.existing_test_names }}
     {% endif %}
 
     {% if input.checker_feedback %}
