@@ -2,8 +2,7 @@
 set -euo pipefail
 
 # Find repo root (look for .venv at parent level)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(dirname $(readlink -f "$0"))/.."
 VENV="$REPO_ROOT/.venv"
 
 # Check for API Keys
@@ -28,4 +27,6 @@ source "$VENV/bin/activate"
 
 # Run skill with default query if no args provided
 QUERY="${*:-latest developments in AI agents}"
+SKILL_DIR="$(dirname $(readlink -f "$0"))"
+export PYTHONPATH="$SKILL_DIR/src:${PYTHONPATH:-}"
 exec python -m search_refiner.main "$QUERY"

@@ -2,8 +2,7 @@
 set -euo pipefail
 
 # Find repo root (look for .venv at parent level)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+REPO_ROOT="$(dirname $(readlink -f "$0"))/.."
 VENV="$REPO_ROOT/.venv"
 
 # Check for API Keys
@@ -47,6 +46,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 COMMAND="${COMMAND:-echo 'No command provided'}"
+
+# Set PYTHONPATH to find skill modules
+SKILL_DIR="$(dirname $(readlink -f "$0"))"
+export PYTHONPATH="$SKILL_DIR/src:${PYTHONPATH:-}"
 
 # Run skill
 exec python -m shell_analyzer.main --style="$STYLE" "$COMMAND"

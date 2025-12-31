@@ -63,9 +63,6 @@ fi
 
 # Install optional dependencies for selected skills
 for skill in $SKILLS; do
-    # Normalize skill name (convert - to _)
-    skill_normalized=$(echo "$skill" | tr '-' '_')
-
     echo "Installing dependencies for $skill..."
     $PIP_CMD install -e "$SCRIPT_DIR"["$skill"] || {
         # Fallback if the group doesn't exist, just install base
@@ -84,10 +81,7 @@ SKILLS_DIR="$HOME/.claude/skills"
 mkdir -p "$SKILLS_DIR"
 
 for skill in $SKILLS; do
-    # Normalize skill name (convert - to _)
-    skill_normalized=$(echo "$skill" | tr '-' '_')
-
-    SKILL_RUN_SH="$SCRIPT_DIR/$skill_normalized"
+    SKILL_RUN_SH="$SCRIPT_DIR/$skill"
     if [[ -d "$SKILL_RUN_SH" ]]; then
         SKILL_LINK="$SKILLS_DIR/$skill"
 
