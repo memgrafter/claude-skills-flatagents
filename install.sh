@@ -121,9 +121,10 @@ done
 echo ""
 echo "✓ Installation complete!"
 echo ""
-echo "To use skills, ensure these environment variables are set:"
-echo "  export CEREBRAS_API_KEY='...'"
-echo "  export OPENAI_API_KEY='...'  (optional, if not using Cerebras)"
+echo "Configuration:"
+echo "  1. Set API key for your LLM provider (e.g., ANTHROPIC_API_KEY, OPENAI_API_KEY, etc.)"
+echo "  2. Edit agents/*.yml files in each skill to configure provider/model"
+echo "  3. For search_refiner: Also set EXA_API_KEY for web search"
 echo ""
 
 if [[ -n "$SKILL_FILTER" ]]; then

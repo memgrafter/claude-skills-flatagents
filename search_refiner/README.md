@@ -5,8 +5,8 @@
 ## Requirements
 
 - Python 3.10+
-- `CEREBRAS_API_KEY` or `OPENAI_API_KEY`
-- `EXA_API_KEY`
+- API key for your chosen LLM provider (configured in `agents/*.yml`)
+- `EXA_API_KEY` for web search via Exa MCP
 
 ## Install
 
@@ -27,5 +27,7 @@
 
 ## Configuration
 
-- `config/search.yml` - Search agent config
-- `config/refiner.yml` - Refiner agent config
+Edit the agent YAML files to change provider/model:
+- `agents/search.yml` - Search agent (provider, model, temperature, etc.)
+- `agents/refiner.yml` - Refiner agent (output token limit, etc.)
+- `machine.yml` - State machine flow (retry backoffs, error handling)

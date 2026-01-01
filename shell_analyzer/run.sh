@@ -5,12 +5,6 @@ set -euo pipefail
 REPO_ROOT="$(dirname $(readlink -f "$0"))/.."
 VENV="$REPO_ROOT/.venv"
 
-# Check for API Keys
-if [[ -z "${CEREBRAS_API_KEY:-}" && -z "${OPENAI_API_KEY:-}" ]]; then
-    echo "ERROR: Set CEREBRAS_API_KEY or OPENAI_API_KEY" >&2
-    exit 1
-fi
-
 # Activate shared venv
 if [[ ! -d "$VENV" ]]; then
     echo "ERROR: Shared venv not found at $VENV" >&2

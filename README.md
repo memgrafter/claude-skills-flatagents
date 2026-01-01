@@ -29,5 +29,41 @@ This ensures you have the latest FlatMachine features (requires flatagents >= 0.
 ## Requirements
 
 - Python 3.10+
-- `CEREBRAS_API_KEY` or `OPENAI_API_KEY`
-- `EXA_API_KEY`
+- API key(s) for your chosen LLM provider(s)
+
+## Configuration
+
+Each skill uses agents defined in `agents/*.yml` files. Configure your provider and model by editing these files:
+
+```yaml
+# Example: agents/analyzer.yml
+data:
+  model:
+    provider: openai      # anthropic, openai, cerebras, etc.
+    name: gpt-4          # model name for your provider
+    temperature: 0.1
+    max_tokens: 4096
+```
+
+**Common providers:**
+- `anthropic` - Requires `ANTHROPIC_API_KEY` (models: claude-3-5-sonnet-20241022, etc.)
+- `openai` - Requires `OPENAI_API_KEY` (models: gpt-4, gpt-4-turbo, etc.)
+- `cerebras` - Requires `CEREBRAS_API_KEY` (models: zai-glm-4.6, llama3.1-8b, etc.)
+- See [FlatAgents docs](https://github.com/memgrafter/flatagents) for full provider list
+
+**search_refiner** also requires `EXA_API_KEY` for web search via Exa MCP.
+
+## Usage
+
+```bash
+# Search and refine web results
+./search_refiner/run.sh "your search query"
+
+# Analyze shell command output
+./shell_analyzer/run.sh "pytest -v"
+
+# Generate tests to reach coverage target
+./test_writer/run.sh path/to/file.py --target=80
+```
+
+Each skill's agents are pre-configured with Cerebras (fast, cheap) but you can change to any provider by editing the `agents/*.yml` files.
