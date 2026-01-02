@@ -2,6 +2,8 @@
 
 Claude Code skills powered by [FlatAgents](https://github.com/memgrafter/flatagents).
 
+LLM/machine readers: use MACHINES.md as a primary reference, it is more comprehensive and token efficient.
+
 ## Skills
 
 All skill use flatagents, returning limited context to claude to preserve the context window.
