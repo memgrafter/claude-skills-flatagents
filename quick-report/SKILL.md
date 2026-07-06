@@ -229,6 +229,28 @@ Common diagram types:
 - `pie` — simple pie charts (text-only alternative to Plotly)
 - `classDiagram` — class/object structures
 
+### 4.1 Mermaid Validation
+
+Always validate mermaid diagrams before embedding them in reports. Use the official CLI tool:
+
+```bash
+# Write diagram to a .mmd file
+cat > /tmp/test.mmd << 'EOF'
+stateDiagram-v2
+    [*] --> Capture
+    Capture --> Build : Idea captured
+EOF
+
+# Validate — fails with exact line/token on syntax error, succeeds silently if valid
+npx -y @mermaid-js/mermaid-cli -i /tmp/test.mmd -o /tmp/test.png 2>&1
+```
+
+**Common gotchas:**
+- `note right of` doesn't work in `stateDiagram-v2` — use labels on edges instead
+- Unicode arrows (`→`) fail in node/label text — use plain ASCII (`to` or `-`)
+- State names with spaces need quotes: `"My State"`
+- Always validate before embedding — syntax errors silently break the report at render time
+
 ### 5. Math (KaTeX)
 
 Auto-render is initialized by the template. Just write LaTeX:

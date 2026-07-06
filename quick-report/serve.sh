@@ -10,7 +10,7 @@ PORT="${1:-8080}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 
 echo "Serving quick-report from: $DIR"
-echo "Report URL: http://$(hostname -I | awk '{print $1}'):${PORT}/reports/quick-report-skill-analysis.html"
+echo "Report URL: http://$(hostname):${PORT}/reports/quick-report-skill-analysis.html"
 echo "PID file:   /tmp/quick-report-serve.pid"
 echo ""
 
